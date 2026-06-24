@@ -116,6 +116,41 @@ public class Mvp2ServiceTests
     }
 
     [Fact]
+    public void RiskClassifier_Classify_ProtectedRootsTakePrecedenceOverLowRiskPatterns()
+    {
+        var classifier = new RiskClassifier();
+
+        Assert.Equal(RiskLevel.Forbidden, classifier.Classify(@"C:\Windows\Temp\cache.tmp", false));
+        Assert.Equal(RiskLevel.High, classifier.Classify(@"C:\Program Files\App\Cache\data.tmp", false));
+        Assert.Equal(RiskLevel.High, classifier.Classify(@"C:\Program Files (x86)\App\Cache\data.tmp", false));
+    }
+
+    [Fact]
+    public async Task CleanExecutor_ExecuteAsync_RequiresAllowedLowRiskPathWhitelist()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "WinDiskCleanerTests", Guid.NewGuid().ToString("N"));
+        var recycleRoot = Path.Combine(tempRoot, "recycle");
+        var scannedLowRiskFile = Path.Combine(tempRoot, "Cache", "scanned.tmp");
+        var aiInjectedFile = Path.Combine(tempRoot, "Cache", "injected.tmp");
+        Directory.CreateDirectory(Path.GetDirectoryName(scannedLowRiskFile)!);
+        await File.WriteAllTextAsync(scannedLowRiskFile, "safe");
+        await File.WriteAllTextAsync(aiInjectedFile, "injected");
+        var executor = new CleanExecutor(recycleRoot, Path.Combine(tempRoot, "clean.log"));
+
+        var result = await executor.ExecuteAsync(new List<AISuggestionItem>
+        {
+            new() { Path = scannedLowRiskFile, Action = "delete", EstimatedSpace = 4 },
+            new() { Path = aiInjectedFile, Action = "delete", EstimatedSpace = 8 }
+        }, allowedLowRiskPaths: new[] { scannedLowRiskFile });
+
+        Assert.Equal(1, result.Succeeded);
+        Assert.Equal(1, result.Failed);
+        Assert.False(File.Exists(scannedLowRiskFile));
+        Assert.True(File.Exists(aiInjectedFile));
+        Assert.Contains(result.Errors, error => error.Contains("不在当前扫描 Low 风险白名单"));
+    }
+
+    [Fact]
     public async Task CleanExecutor_ExecuteAsync_OnlyDeletesItemsWithDeleteActionAndReportsMissingPaths()
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "WinDiskCleanerTests", Guid.NewGuid().ToString("N"));

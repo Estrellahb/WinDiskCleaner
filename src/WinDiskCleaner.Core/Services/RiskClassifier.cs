@@ -13,11 +13,18 @@ public class RiskClassifier
 
     public RiskLevel Classify(string path, bool isDirectory)
     {
-        foreach (var rule in _rules)
+        var normalizedPath = NormalizeForMatching(path);
+        var protectedRisk = ClassifyProtectedRoot(normalizedPath);
+        if (protectedRisk is not null)
+        {
+            return protectedRisk.Value;
+        }
+
+        foreach (var rule in _rules.Where(rule => rule.RiskLevel is not RiskLevel.High and not RiskLevel.Forbidden))
         {
             foreach (var pattern in rule.PathPatterns)
             {
-                if (path.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                if (normalizedPath.Contains(NormalizeForMatching(pattern), StringComparison.OrdinalIgnoreCase))
                 {
                     return rule.RiskLevel;
                 }
@@ -32,6 +39,38 @@ public class RiskClassifier
         return RiskLevel.Unknown;
     }
 
+    private static RiskLevel? ClassifyProtectedRoot(string normalizedPath)
+    {
+        if (ContainsPathSegment(normalizedPath, "windows"))
+        {
+            return RiskLevel.Forbidden;
+        }
+
+        if (ContainsPathSegments(normalizedPath, "program files") || ContainsPathSegments(normalizedPath, "program files (x86)"))
+        {
+            return RiskLevel.High;
+        }
+
+        return null;
+    }
+
+    private static string NormalizeForMatching(string path)
+    {
+        return path.Replace('\\', '/').TrimEnd('/');
+    }
+
+    private static bool ContainsPathSegment(string normalizedPath, string segment)
+    {
+        return normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Any(part => string.Equals(part, segment, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsPathSegments(string normalizedPath, string segment)
+    {
+        return normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Any(part => string.Equals(part, segment, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static List<RiskRule> LoadBuiltInRules()
     {
         return new List<RiskRule>
@@ -40,7 +79,7 @@ public class RiskClassifier
             {
                 Id = "temp",
                 Name = "临时文件",
-                PathPatterns = new() { @"\Temp", @"\TMP" },
+                PathPatterns = new() { @"\Temp", @"\TMP", "/Temp", "/TMP" },
                 RiskLevel = RiskLevel.Low,
                 Category = "temp",
                 Action = "delete",
@@ -50,7 +89,7 @@ public class RiskClassifier
             {
                 Id = "cache",
                 Name = "缓存",
-                PathPatterns = new() { "Cache", "cache" },
+                PathPatterns = new() { "/Cache", "/cache" },
                 RiskLevel = RiskLevel.Low,
                 Category = "cache",
                 Action = "delete",

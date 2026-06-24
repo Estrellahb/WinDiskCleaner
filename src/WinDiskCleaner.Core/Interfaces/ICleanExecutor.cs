@@ -4,7 +4,7 @@ namespace WinDiskCleaner.Core.Interfaces;
 
 public interface ICleanExecutor
 {
-    Task<CleanResult> ExecuteAsync(List<AISuggestionItem> items, bool toRecycleBin = true);
+    Task<CleanResult> ExecuteAsync(List<AISuggestionItem> items, bool toRecycleBin = true, IEnumerable<string>? allowedLowRiskPaths = null);
 }
 
 public class CleanResult
