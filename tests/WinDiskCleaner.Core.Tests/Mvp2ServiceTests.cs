@@ -1,0 +1,173 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using WinDiskCleaner.Core.Interfaces;
+using WinDiskCleaner.Core.Models;
+using WinDiskCleaner.Core.Services;
+
+namespace WinDiskCleaner.Core.Tests;
+
+public class Mvp2ServiceTests
+{
+    [Fact]
+    public async Task AIService_AnalyzeReportAsync_PostsPromptAndParsesSuggestionsPayload()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        string? capturedRequestBody = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            capturedRequestBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "```json\n{\"suggestions\":[{\"path\":\"/tmp/a.tmp\",\"action\":\"delete\",\"reason\":\"临时文件\",\"estimatedSpace\":123,\"confidence\":0.91}]}\n```"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        }));
+        var service = new AIService(httpClient, "test-key", "https://api.example.com/v1", "gpt-test");
+        var report = new ScanReport
+        {
+            Items = new List<ScanReportItem>
+            {
+                new() { Path = "/tmp/a.tmp", SizeBytes = 123, Category = "Temp" }
+            }
+        };
+
+        var suggestion = await service.AnalyzeReportAsync(report);
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(HttpMethod.Post, capturedRequest!.Method);
+        Assert.Equal("https://api.example.com/v1/chat/completions", capturedRequest.RequestUri!.ToString());
+        Assert.Equal("Bearer", capturedRequest.Headers.Authorization!.Scheme);
+        Assert.Equal("test-key", capturedRequest.Headers.Authorization.Parameter);
+        Assert.NotNull(capturedRequestBody);
+        using var requestJson = JsonDocument.Parse(capturedRequestBody!);
+        Assert.Equal("gpt-test", requestJson.RootElement.GetProperty("model").GetString());
+        var messages = requestJson.RootElement.GetProperty("messages");
+        Assert.Contains("Windows 磁盘清理顾问", messages[1].GetProperty("content").GetString());
+        Assert.Contains("/tmp/a.tmp", messages[1].GetProperty("content").GetString());
+
+        var item = Assert.Single(suggestion.Suggestions);
+        Assert.Equal("/tmp/a.tmp", item.Path);
+        Assert.Equal("delete", item.Action);
+        Assert.Equal("临时文件", item.Reason);
+        Assert.Equal(123, item.EstimatedSpace);
+        Assert.Equal(123, item.SizeBytes);
+        Assert.Equal(CleanRisk.Low, item.Risk);
+        Assert.Equal(0.91, item.Confidence, 2);
+        Assert.True(suggestion.AnalyzedAt > DateTime.MinValue);
+    }
+
+    [Fact]
+    public async Task AIService_TestConnectionAsync_UsesModelsEndpointAndConfigureValues()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            capturedRequest = request;
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }));
+        var service = new AIService(httpClient, "old-key", "https://old.example.com/v1", "old-model");
+        service.Configure("https://api.example.com/v1/", "new-key", "new-model");
+
+        var ok = await service.TestConnectionAsync();
+
+        Assert.True(ok);
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(HttpMethod.Get, capturedRequest!.Method);
+        Assert.Equal("https://api.example.com/v1/models", capturedRequest.RequestUri!.ToString());
+        Assert.Equal("new-key", capturedRequest.Headers.Authorization!.Parameter);
+    }
+
+    [Fact]
+    public async Task AIService_AnalyzeReportAsync_ReturnsManualSuggestionWhenResponseCannotParse()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""
+            {
+              "choices": [
+                {
+                  "message": {
+                    "content": "not json"
+                  }
+                }
+              ]
+            }
+            """, Encoding.UTF8, "application/json")
+        }));
+        var service = new AIService(httpClient, "test-key", "https://api.example.com/v1", "gpt-test");
+
+        var suggestion = await service.AnalyzeReportAsync(new ScanReport());
+
+        var item = Assert.Single(suggestion.Suggestions);
+        Assert.Equal("解析失败", item.Path);
+        Assert.Equal("manual", item.Action);
+        Assert.Equal(0, item.Confidence);
+    }
+
+    [Fact]
+    public async Task CleanExecutor_ExecuteAsync_OnlyDeletesItemsWithDeleteActionAndReportsMissingPaths()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "WinDiskCleanerTests", Guid.NewGuid().ToString("N"));
+        var recycleRoot = Path.Combine(tempRoot, "recycle");
+        Directory.CreateDirectory(tempRoot);
+        var deleteFile = Path.Combine(tempRoot, "Cache", "delete.tmp");
+        var keepFile = Path.Combine(tempRoot, "Cache", "keep.tmp");
+        var highRiskDeleteFile = Path.Combine(tempRoot, "Program Files", "danger.tmp");
+        var deleteDirectory = Path.Combine(tempRoot, "Cache", "delete-dir");
+        Directory.CreateDirectory(Path.GetDirectoryName(deleteFile)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(highRiskDeleteFile)!);
+        Directory.CreateDirectory(deleteDirectory);
+        await File.WriteAllTextAsync(deleteFile, "12345");
+        await File.WriteAllTextAsync(keepFile, "67890");
+        await File.WriteAllTextAsync(highRiskDeleteFile, "danger");
+        await File.WriteAllTextAsync(Path.Combine(deleteDirectory, "nested.tmp"), "abc");
+        var executor = new CleanExecutor(recycleRoot, Path.Combine(tempRoot, "clean.log"));
+
+        var result = await executor.ExecuteAsync(new List<AISuggestionItem>
+        {
+            new() { Path = deleteFile, Action = "delete", EstimatedSpace = 5 },
+            new() { Path = deleteDirectory, Action = "delete", EstimatedSpace = 3 },
+            new() { Path = keepFile, Action = "keep", EstimatedSpace = 5 },
+            new() { Path = highRiskDeleteFile, Action = "delete", EstimatedSpace = 6 },
+            new() { Path = Path.Combine(tempRoot, "Cache", "missing.tmp"), Action = "delete", EstimatedSpace = 1 }
+        });
+
+        Assert.Equal(2, result.Succeeded);
+        Assert.Equal(2, result.Failed);
+        Assert.Equal(8, result.FreedBytes);
+        Assert.False(File.Exists(deleteFile));
+        Assert.False(Directory.Exists(deleteDirectory));
+        Assert.True(File.Exists(keepFile));
+        Assert.True(File.Exists(highRiskDeleteFile));
+        Assert.True(Directory.EnumerateFileSystemEntries(recycleRoot).Any());
+        Assert.Contains(result.Errors, error => error.Contains("非 Low 风险"));
+        Assert.Contains(result.Errors, error => error.Contains("路径不存在"));
+        Assert.True(File.Exists(Path.Combine(tempRoot, "clean.log")));
+    }
+
+    private sealed class StubHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
+
+        public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler)
+        {
+            _handler = handler;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_handler(request));
+        }
+    }
+}

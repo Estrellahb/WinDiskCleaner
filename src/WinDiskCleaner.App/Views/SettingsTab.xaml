@@ -1,0 +1,23 @@
+<UserControl x:Class="WinDiskCleaner.App.Views.SettingsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="White" Margin="24">
+        <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold" Foreground="#111827" Margin="0,0,0,24" />
+
+            <TextBlock Text="OpenAI 兼容 API Key" Foreground="#374151" Margin="0,0,0,6" />
+            <PasswordBox x:Name="ApiKeyPasswordBox" Height="36" Margin="0,0,0,16" />
+
+            <TextBlock Text="BaseURL" Foreground="#374151" Margin="0,0,0,6" />
+            <TextBox x:Name="BaseUrlTextBox" Height="36" Text="https://api.openai.com/v1" Margin="0,0,0,16" />
+
+            <TextBlock Text="模型" Foreground="#374151" Margin="0,0,0,6" />
+            <TextBox x:Name="ModelTextBox" Height="36" Text="gpt-4o-mini" Margin="0,0,0,16" />
+
+            <StackPanel Orientation="Horizontal">
+                <Button Content="测试连接" Width="120" Height="36" Click="TestConnectionButton_Click" />
+                <TextBlock x:Name="ConnectionStatusTextBlock" Margin="16,8,0,0" Foreground="#6B7280" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

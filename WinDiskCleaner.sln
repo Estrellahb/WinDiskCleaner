@@ -1,0 +1,47 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinDiskCleaner.App", "src\WinDiskCleaner.App\WinDiskCleaner.App.csproj", "{55D8CBEB-F678-4C61-BE50-967F332E7386}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinDiskCleaner.Core", "src\WinDiskCleaner.Core\WinDiskCleaner.Core.csproj", "{51731E90-5695-451E-8E0D-23F2B37BF1E4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinDiskCleaner.Infrastructure", "src\WinDiskCleaner.Infrastructure\WinDiskCleaner.Infrastructure.csproj", "{86A94FAB-8343-4ECF-A066-B72960ECCE8B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{EEA33439-11A5-45D7-8A00-39B644FE4EE1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinDiskCleaner.Core.Tests", "tests\WinDiskCleaner.Core.Tests\WinDiskCleaner.Core.Tests.csproj", "{4A13FB04-4233-44E4-8895-580F809DE542}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{55D8CBEB-F678-4C61-BE50-967F332E7386}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55D8CBEB-F678-4C61-BE50-967F332E7386}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55D8CBEB-F678-4C61-BE50-967F332E7386}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55D8CBEB-F678-4C61-BE50-967F332E7386}.Release|Any CPU.Build.0 = Release|Any CPU
+		{51731E90-5695-451E-8E0D-23F2B37BF1E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51731E90-5695-451E-8E0D-23F2B37BF1E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51731E90-5695-451E-8E0D-23F2B37BF1E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51731E90-5695-451E-8E0D-23F2B37BF1E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86A94FAB-8343-4ECF-A066-B72960ECCE8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86A94FAB-8343-4ECF-A066-B72960ECCE8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86A94FAB-8343-4ECF-A066-B72960ECCE8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86A94FAB-8343-4ECF-A066-B72960ECCE8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A13FB04-4233-44E4-8895-580F809DE542}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A13FB04-4233-44E4-8895-580F809DE542}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A13FB04-4233-44E4-8895-580F809DE542}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A13FB04-4233-44E4-8895-580F809DE542}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3FC6E84F-574F-444A-8FB6-FFE0C767D8F4}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4A13FB04-4233-44E4-8895-580F809DE542} = {EEA33439-11A5-45D7-8A00-39B644FE4EE1}
+	EndGlobalSection
+EndGlobal

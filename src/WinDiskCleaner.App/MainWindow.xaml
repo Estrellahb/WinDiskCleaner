@@ -1,0 +1,30 @@
+<Window x:Class="WinDiskCleaner.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:WinDiskCleaner.App.Views"
+        Title="Windows 磁盘清理助手" Height="720" Width="1100"
+        MinHeight="560" MinWidth="900"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 侧边栏 -->
+        <Border Grid.Column="0" Background="#F3F3F3">
+            <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
+                     SelectedIndex="0" SelectionChanged="TabList_SelectionChanged">
+                <ListBoxItem Height="48" Content="🗺️ 空间地图" FontSize="14"/>
+                <ListBoxItem Height="48" Content="🧹 清理建议" FontSize="14"/>
+                <ListBoxItem Height="48" Content="📋 重复文件" FontSize="14"/>
+                <ListBoxItem Height="48" Content="⚙️ 注册表" FontSize="14"/>
+                <ListBoxItem Height="48" Content="🔗 快捷方式" FontSize="14"/>
+                <ListBoxItem Height="48" Content="⚡ 设置" FontSize="14"/>
+            </ListBox>
+        </Border>
+
+        <!-- 内容区 -->
+        <ContentControl x:Name="ContentArea" Grid.Column="1" Margin="10"/>
+    </Grid>
+</Window>

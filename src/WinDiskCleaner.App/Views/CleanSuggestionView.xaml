@@ -1,0 +1,111 @@
+<UserControl x:Class="WinDiskCleaner.App.Views.CleanSuggestionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 顶部统计 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <Border Background="#107C10" Padding="10,5" CornerRadius="4" Margin="0,0,10,0">
+                    <TextBlock Text="{Binding SafeCleanText}" Foreground="White" FontSize="14"/>
+                </Border>
+                <Border Background="#FF8C00" Padding="10,5" CornerRadius="4" Margin="0,0,10,0">
+                    <TextBlock Text="{Binding ConfirmCleanText}" Foreground="White" FontSize="14"/>
+                </Border>
+                <Border Background="#E81123" Padding="10,5" CornerRadius="4">
+                    <TextBlock Text="{Binding ForbiddenText}" Foreground="White" FontSize="14"/>
+                </Border>
+            </StackPanel>
+            <TextBlock x:Name="AiStatusText" Text="AI 建议：等待分析" Foreground="#666" FontSize="12"/>
+        </StackPanel>
+
+        <!-- 建议列表 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0">
+                <ItemsControl ItemsSource="{Binding Suggestions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,8" Padding="12" CornerRadius="6"
+                                    BorderBrush="{Binding RiskColor}" BorderThickness="2">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Path}"
+                                               FontWeight="Bold" FontSize="13" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SizeText}"
+                                               FontSize="13" Foreground="Gray"/>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Description}"
+                                               FontSize="12" Foreground="#666" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="0,6,0,0"
+                                            Background="{Binding RiskColor}" Padding="6,2" CornerRadius="3"
+                                            HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding ActionText}" Foreground="White" FontSize="11"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Border Grid.Column="2" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="10">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="AI 建议列表" FontSize="15" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding AiSuggestions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8" Padding="10" BorderBrush="#DDD" BorderThickness="1" CornerRadius="4">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Grid.Row="0" Grid.Column="0" IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,8,0"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Path}" FontWeight="Bold" TextWrapping="Wrap"/>
+                                            <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ConfidenceText}" Foreground="#666" Margin="8,0,0,0"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Reason}" Foreground="#666" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding SizeText}" Foreground="#999" FontSize="12" Margin="0,4,0,0"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- 底部按钮 -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="刷新建议" Width="100" Height="30" Margin="0,0,10,0" Click="RefreshBtn_Click"/>
+            <Button Content="导出报告" Width="100" Height="30" Margin="0,0,10,0" Click="ExportBtn_Click"/>
+            <Button Content="🤖 AI 分析" Width="100" Height="30" Margin="0,0,10,0" Background="#0078D4" Foreground="White" Click="AIAnalyzeBtn_Click"/>
+            <Button Content="执行清理" Width="100" Height="30" Background="#107C10" Foreground="White" Click="ExecuteCleanBtn_Click"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
