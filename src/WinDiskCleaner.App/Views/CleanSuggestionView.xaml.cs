@@ -104,6 +104,17 @@ public partial class CleanSuggestionView : UserControl
             return;
         }
 
+        var privacyResult = MessageBox.Show(
+            $"AI 分析会把当前扫描报告发送到配置的 AI 服务：{SettingsView.BaseUrl}\n\n扫描报告包含本地路径、文件名、目录结构等信息。确认继续？",
+            "AI 分析隐私确认",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (privacyResult != MessageBoxResult.Yes)
+        {
+            AiStatusText.Text = "已取消 AI 分析";
+            return;
+        }
+
         AiStatusText.Text = "AI 分析中...";
         try
         {
@@ -137,8 +148,9 @@ public partial class CleanSuggestionView : UserControl
         }
 
         AiStatusText.Text = "执行清理中...";
+        var allowedLowRiskPaths = _currentReport?.LowRiskItems.Select(item => item.Path).ToList() ?? new List<string>();
         var executor = new CleanExecutor();
-        var result = await executor.ExecuteAsync(selectedItems);
+        var result = await executor.ExecuteAsync(selectedItems, allowedLowRiskPaths: allowedLowRiskPaths);
         RefreshAfterClean(result);
         AiStatusText.Text = $"清理完成：成功 {result.Succeeded}，失败 {result.Failed}，释放 {ReportGenerator.FormatSize(result.FreedBytes)}";
     }

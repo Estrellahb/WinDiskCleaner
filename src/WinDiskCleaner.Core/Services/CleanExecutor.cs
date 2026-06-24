@@ -21,12 +21,13 @@ public class CleanExecutor : ICleanExecutor
         _logPath = logPath ?? Path.Combine(appData, "WinDiskCleaner", "Logs", $"clean-{DateTime.UtcNow:yyyyMMddHHmmss}.log");
     }
 
-    public async Task<CleanResult> ExecuteAsync(List<AISuggestionItem> items, bool toRecycleBin = true)
+    public async Task<CleanResult> ExecuteAsync(List<AISuggestionItem> items, bool toRecycleBin = true, IEnumerable<string>? allowedLowRiskPaths = null)
     {
         var result = new CleanResult();
         Directory.CreateDirectory(_recycleRoot);
         Directory.CreateDirectory(Path.GetDirectoryName(_logPath) ?? _recycleRoot);
 
+        var allowedPaths = allowedLowRiskPaths?.Select(NormalizePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var riskClassifier = new RiskClassifier();
         foreach (var item in items.Where(x => string.Equals(x.Action, "delete", StringComparison.OrdinalIgnoreCase)))
         {
@@ -35,6 +36,13 @@ public class CleanExecutor : ICleanExecutor
                 if (!File.Exists(item.Path) && !Directory.Exists(item.Path))
                 {
                     result.Errors.Add($"路径不存在：{item.Path}");
+                    result.Failed++;
+                    continue;
+                }
+
+                if (allowedPaths is not null && !allowedPaths.Contains(NormalizePath(item.Path)))
+                {
+                    result.Errors.Add($"跳过不在当前扫描 Low 风险白名单的项：{item.Path}");
                     result.Failed++;
                     continue;
                 }
@@ -124,6 +132,11 @@ public class CleanExecutor : ICleanExecutor
         {
             File.Move(sourcePath, targetPath);
         }
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return Path.GetFullPath(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
     }
 
     private async Task WriteLogAsync(CleanResult result)
