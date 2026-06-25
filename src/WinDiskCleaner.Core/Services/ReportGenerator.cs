@@ -21,14 +21,14 @@ public class ReportGenerator
 
     public async Task SaveToFileAsync(ScanReport report, string filePath)
     {
-        var json = GenerateJson(report);
         var directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             Directory.CreateDirectory(directory);
         }
 
-        await File.WriteAllTextAsync(filePath, json);
+        await using var stream = File.Create(filePath);
+        await JsonSerializer.SerializeAsync(stream, report, JsonOptions);
     }
 
     public string GenerateHtmlReport(ScanReport report)

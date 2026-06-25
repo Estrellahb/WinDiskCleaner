@@ -43,6 +43,24 @@ public class Mvp1ReportGeneratorTests
         Assert.Contains("C:\\Temp\\a.tmp", markdown);
     }
 
+    [Fact]
+    public void ReportGenerator_SaveToFileAsync_StreamsJsonWithoutMaterializingFullString()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            GetRepositoryRoot(),
+            "src",
+            "WinDiskCleaner.Core",
+            "Services",
+            "ReportGenerator.cs"));
+        var saveMethodStart = source.IndexOf("public async Task SaveToFileAsync", StringComparison.Ordinal);
+        var nextMethodStart = source.IndexOf("public string GenerateHtmlReport", StringComparison.Ordinal);
+        var saveMethod = source[saveMethodStart..nextMethodStart];
+
+        Assert.Contains("JsonSerializer.SerializeAsync", saveMethod);
+        Assert.DoesNotContain("GenerateJson(report)", saveMethod);
+        Assert.DoesNotContain("File.WriteAllTextAsync", saveMethod);
+    }
+
     [Theory]
     [InlineData(512, "512.00 B")]
     [InlineData(1024, "1.00 KB")]
@@ -51,6 +69,17 @@ public class Mvp1ReportGeneratorTests
     public void ReportGenerator_FormatSize_UsesReadableUnits(long bytes, string expected)
     {
         Assert.Equal(expected, ReportGenerator.FormatSize(bytes));
+    }
+
+    private static string GetRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "WinDiskCleaner.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("Repository root was not found.");
     }
 
     private static ScanReport CreateReport()

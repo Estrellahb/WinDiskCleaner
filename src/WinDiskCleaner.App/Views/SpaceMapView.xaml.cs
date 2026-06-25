@@ -49,8 +49,6 @@ public partial class SpaceMapView : UserControl
             var report = await _scanner.ScanDriveAsync(DriveCombo.SelectedItem.ToString()!, progress, _cts.Token);
             Treemap.ItemsSource = report.TopDirectories.Take(20).ToList();
 
-            var reportGen = new ReportGenerator();
-            await reportGen.SaveToFileAsync(report, Path.Combine(Environment.CurrentDirectory, $"scan_report_{DateTime.Now:yyyyMMdd_HHmmss}.json"));
             OnScanCompleted?.Invoke(report);
         }
         catch (OperationCanceledException)
