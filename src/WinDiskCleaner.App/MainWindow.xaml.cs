@@ -10,6 +10,7 @@ public partial class MainWindow : Window
     private readonly CleanSuggestionView _cleanSuggestion = new();
     private readonly DuplicateFilesView _duplicateFiles = new();
     private readonly RegistryTab _registry = new();
+    private readonly ShortcutTab _shortcuts = new();
     private readonly SettingsView _settings = new();
 
     public MainWindow()
@@ -30,6 +31,7 @@ public partial class MainWindow : Window
             1 => _cleanSuggestion,
             2 => _duplicateFiles,
             3 => _registry,
+            4 => _shortcuts,
             5 => _settings,
             _ => new TextBlock
             {

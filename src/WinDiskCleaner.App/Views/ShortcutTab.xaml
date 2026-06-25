@@ -1,0 +1,83 @@
+<UserControl x:Class="WinDiskCleaner.App.Views.ShortcutTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="ShortcutRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding TargetExists}" Value="False">
+                    <Setter Property="Foreground" Value="#B00020"/>
+                    <Setter Property="Background" Value="#FFF1F1"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="快捷方式" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="扫描桌面、开始菜单和启动项中的 .lnk 文件，标记目标不存在的失效快捷方式。删除操作只删除快捷方式文件本身。" Foreground="#666" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBox x:Name="SearchBox" Grid.Column="0" Height="32" VerticalContentAlignment="Center" Margin="0,0,8,0" TextChanged="SearchBox_TextChanged" ToolTip="搜索名称、路径、目标路径、来源目录"/>
+            <Button Grid.Column="1" x:Name="StartScanBtn" Content="开始扫描" Width="100" Height="32" Margin="0,0,8,0" Background="#0078D4" Foreground="White" Click="StartScanBtn_Click"/>
+            <Button Grid.Column="2" x:Name="CancelScanBtn" Content="取消扫描" Width="90" Height="32" Margin="0,0,8,0" IsEnabled="False" Click="CancelScanBtn_Click"/>
+            <Button Grid.Column="3" Content="按路径" Width="80" Height="32" Margin="0,0,8,0" Click="SortPathBtn_Click"/>
+            <Button Grid.Column="4" Content="按状态" Width="80" Height="32" Click="SortStatusBtn_Click"/>
+
+            <Grid Grid.Row="1" Grid.ColumnSpan="5" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ProgressBar x:Name="ScanProgressBar" Height="12" IsIndeterminate="False"/>
+                <TextBlock x:Name="StatsText" Grid.Column="1" Text="总计 0 / 有效 0 / 失效 0" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
+        </Grid>
+
+        <DataGrid Grid.Row="2" x:Name="ShortcutGrid" ItemsSource="{Binding Shortcuts}" AutoGenerateColumns="False" RowStyle="{StaticResource ShortcutRowStyle}" Margin="0,0,0,12">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="选中" Binding="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="1.3*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="路径" Binding="{Binding ShortcutPath}" Width="2*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="目标路径" Binding="{Binding TargetPath}" Width="2*" IsReadOnly="True"/>
+                <DataGridTextColumn Header="状态" Binding="{Binding TargetExists}" Width="80" IsReadOnly="True"/>
+                <DataGridTextColumn Header="来源目录" Binding="{Binding SourceDirectory}" Width="120" IsReadOnly="True"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="80"/>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Button Content="全选失效" Width="90" Height="32" Margin="0,0,8,0" Click="SelectInvalidBtn_Click"/>
+                <Button Content="反选失效" Width="90" Height="32" Margin="0,0,8,0" Click="InvertInvalidBtn_Click"/>
+                <Button x:Name="DeleteSelectedBtn" Content="删除选中" Width="100" Height="32" Margin="0,0,8,0" Background="#D83B01" Foreground="White" Click="DeleteSelectedBtn_Click"/>
+                <Button Content="导出报告" Width="100" Height="32" Click="ExportReportBtn_Click"/>
+                <TextBlock x:Name="StatusText" Text="快捷方式页已就绪" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#666"/>
+            </StackPanel>
+            <ListBox Grid.Row="1" ItemsSource="{Binding OperationLogs}"/>
+        </Grid>
+    </Grid>
+</UserControl>
