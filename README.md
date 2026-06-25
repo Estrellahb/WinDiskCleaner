@@ -85,19 +85,13 @@ HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall
 
 ### 下载运行
 
-在 GitHub Releases 页面下载 Windows 预览版压缩包：
+在 GitHub Releases 页面下载 Windows x64 便携版程序：
 
 ```text
-WinDiskCleaner-preview-win-x64.zip
+WinDiskCleaner-win-x64.exe
 ```
 
-解压后运行应用程序：
-
-```text
-WinDiskCleaner.App.exe
-```
-
-如果发布包中存在多个文件，需要保留整个解压目录，不要只单独移动 exe 文件。
+下载后双击运行，无需安装 .NET Runtime，也不需要额外复制依赖文件。
 
 ### 基本操作
 
