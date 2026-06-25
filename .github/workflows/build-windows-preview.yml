@@ -1,0 +1,51 @@
+name: Build Windows Preview
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build Windows x64 Preview
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore WinDiskCleaner.sln
+
+      - name: Run tests
+        run: dotnet test tests/WinDiskCleaner.Core.Tests/WinDiskCleaner.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Publish Windows x64 self-contained app
+        run: >
+          dotnet publish src/WinDiskCleaner.App/WinDiskCleaner.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -o artifacts/WinDiskCleaner-preview-win-x64
+
+      - name: Create zip package
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path artifacts/WinDiskCleaner-preview-win-x64/* `
+            -DestinationPath WinDiskCleaner-preview-win-x64.zip `
+            -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinDiskCleaner-preview-win-x64
+          path: WinDiskCleaner-preview-win-x64.zip
