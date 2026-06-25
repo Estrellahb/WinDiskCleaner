@@ -92,38 +92,39 @@ public partial class DuplicateFilesView : UserControl
 
     private async void DeleteSelectedBtn_Click(object sender, RoutedEventArgs e)
     {
-        var selectedItems = DuplicateGroups
+        var selectedPaths = DuplicateGroups
             .SelectMany(group => group.Files)
             .Where(file => file.Selected && !file.IsRecommended)
-            .Select(file => new AISuggestionItem
-            {
-                Path = file.Path,
-                Action = "delete",
-                EstimatedSpace = file.Size,
-                Risk = CleanRisk.Low,
-                Reason = "重复文件清理"
-            })
+            .Select(file => file.Path)
             .ToList();
 
-        if (selectedItems.Count == 0)
+        if (selectedPaths.Count == 0)
         {
             MessageBox.Show("请先勾选要删除的重复文件。", "删除选中", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        var confirm = MessageBox.Show($"确认将 {selectedItems.Count} 个重复文件移到回收站？", "删除选中", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        var confirm = MessageBox.Show($"确认将 {selectedPaths.Count} 个重复文件移到回收站？删除前会重新校验重复文件内容。", "删除选中", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.Yes)
         {
             return;
         }
 
-        var executor = new CleanExecutor();
-        var result = await executor.ExecuteAsync(selectedItems, allowedLowRiskPaths: selectedItems.Select(item => item.Path));
-        RefreshAfterDelete(result.SucceededPaths);
-        StatusText.Text = $"删除完成：成功 {result.Succeeded}，失败 {result.Failed}，释放 {ReportGenerator.FormatSize(result.FreedBytes)}";
-        if (result.Errors.Count > 0)
+        DeleteSelectedBtn.IsEnabled = false;
+        try
         {
-            StatusText.Text += $"；错误 {result.Errors.Count} 项";
+            var executor = new DuplicateDeleteExecutor();
+            var result = await executor.DeleteAsync(DuplicateGroups.Select(group => group.Source).ToList(), selectedPaths);
+            RefreshAfterDelete(result.SucceededPaths);
+            StatusText.Text = $"删除完成：成功 {result.Succeeded}，失败 {result.Failed}，释放 {ReportGenerator.FormatSize(result.FreedBytes)}";
+            if (result.Errors.Count > 0)
+            {
+                StatusText.Text += $"；错误 {result.Errors.Count} 项";
+            }
+        }
+        finally
+        {
+            DeleteSelectedBtn.IsEnabled = true;
         }
     }
 
@@ -159,6 +160,11 @@ public partial class DuplicateFilesView : UserControl
         }
 
         StatusText.Text = $"报告已导出：{dialog.FileName}";
+    }
+
+    private void SelectionCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        RefreshWastedSpace();
     }
 
     private void SelectRecommendedBtn_Click(object sender, RoutedEventArgs e)

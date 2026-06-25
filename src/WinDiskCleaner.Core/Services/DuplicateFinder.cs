@@ -33,7 +33,20 @@ public class DuplicateFinder : IDuplicateFinder
             foreach (var file in sizeGroup)
             {
                 ct.ThrowIfCancellationRequested();
-                var partialHash = await ComputeHashAsync(file.FullName, PartialHashBytes, ct);
+                string partialHash;
+                try
+                {
+                    partialHash = await ComputeHashAsync(file.FullName, PartialHashBytes, ct);
+                }
+                catch (IOException)
+                {
+                    continue;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    continue;
+                }
+
                 if (!partialGroups.TryGetValue(partialHash, out var bucket))
                 {
                     bucket = new List<FileInfo>();
@@ -51,7 +64,20 @@ public class DuplicateFinder : IDuplicateFinder
                 var shaGroups = new Dictionary<string, List<FileInfo>>(StringComparer.OrdinalIgnoreCase);
                 foreach (var file in partialGroup)
                 {
-                    var hash = await ComputeHashAsync(file.FullName, null, ct);
+                    string hash;
+                    try
+                    {
+                        hash = await ComputeHashAsync(file.FullName, null, ct);
+                    }
+                    catch (IOException)
+                    {
+                        continue;
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        continue;
+                    }
+
                     if (!shaGroups.TryGetValue(hash, out var bucket))
                     {
                         bucket = new List<FileInfo>();
@@ -174,6 +200,18 @@ public class DuplicateFinder : IDuplicateFinder
     {
         return normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Any(part => string.Equals(part, segment, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static string ComputeSha256(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920);
+        using var sha = SHA256.Create();
+        return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
+    }
+
+    public static Task<string> ComputeSha256Async(string path, CancellationToken ct)
+    {
+        return ComputeHashAsync(path, null, ct);
     }
 
     private static async Task<string> ComputeHashAsync(string path, int? maxBytes, CancellationToken ct)

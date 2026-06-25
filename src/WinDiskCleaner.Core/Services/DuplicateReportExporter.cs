@@ -63,11 +63,24 @@ public class DuplicateReportExporter
 
     private static string EscapeCsv(string value)
     {
-        if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n') && !value.Contains('\r'))
+        var safeValue = EscapeFormulaPrefix(value);
+        if (!safeValue.Contains(',') && !safeValue.Contains('"') && !safeValue.Contains('\n') && !safeValue.Contains('\r'))
+        {
+            return safeValue;
+        }
+
+        return $"\"{safeValue.Replace("\"", "\"\"")}\"";
+    }
+
+    private static string EscapeFormulaPrefix(string value)
+    {
+        if (string.IsNullOrEmpty(value))
         {
             return value;
         }
 
-        return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+            ? $"'{value}"
+            : value;
     }
 }
