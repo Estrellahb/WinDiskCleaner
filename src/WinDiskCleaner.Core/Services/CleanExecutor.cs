@@ -8,9 +8,11 @@ public class CleanExecutor : ICleanExecutor
 {
     private readonly string _recycleRoot;
     private readonly string _logPath;
+    private readonly bool _useWindowsRecycleBin;
 
     public CleanExecutor(string? recycleRoot = null, string? logPath = null)
     {
+        _useWindowsRecycleBin = recycleRoot is null;
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(appData))
         {
@@ -91,7 +93,7 @@ public class CleanExecutor : ICleanExecutor
 
     private void MoveToRecycleBin(string path)
     {
-        if (OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows() && _useWindowsRecycleBin)
         {
             if (Directory.Exists(path))
             {
