@@ -14,7 +14,7 @@
         <!-- 侧边栏 -->
         <Border Grid.Column="0" Background="#F3F3F3">
             <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
-                     SelectedIndex="0" SelectionChanged="TabList_SelectionChanged">
+                     SelectionChanged="TabList_SelectionChanged">
                 <ListBoxItem Height="48" Content="🗺️ 空间地图" FontSize="14"/>
                 <ListBoxItem Height="48" Content="🧹 清理建议" FontSize="14"/>
                 <ListBoxItem Height="48" Content="📋 重复文件" FontSize="14"/>

@@ -16,11 +16,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        ContentArea.Content = _spaceMap;
         _spaceMap.OnScanCompleted += report =>
         {
             _cleanSuggestion.LoadReport(report);
         };
+        TabList.SelectedIndex = 0;
     }
 
     private void TabList_SelectionChanged(object sender, SelectionChangedEventArgs e)

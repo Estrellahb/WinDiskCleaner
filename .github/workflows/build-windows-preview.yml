@@ -37,6 +37,8 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:IncludeAllContentForSelfExtract=true
           -o artifacts/WinDiskCleaner-preview-win-x64
 
       - name: Create zip package
