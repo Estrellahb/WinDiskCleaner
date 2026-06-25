@@ -15,12 +15,12 @@
         <Border Grid.Column="0" Background="#F3F3F3">
             <ListBox x:Name="TabList" BorderThickness="0" Background="Transparent"
                      SelectionChanged="TabList_SelectionChanged">
-                <ListBoxItem Height="48" Content="🗺️ 空间地图" FontSize="14"/>
-                <ListBoxItem Height="48" Content="🧹 清理建议" FontSize="14"/>
-                <ListBoxItem Height="48" Content="📋 重复文件" FontSize="14"/>
-                <ListBoxItem Height="48" Content="⚙️ 注册表" FontSize="14"/>
-                <ListBoxItem Height="48" Content="🔗 快捷方式" FontSize="14"/>
-                <ListBoxItem Height="48" Content="⚡ 设置" FontSize="14"/>
+                <ListBoxItem Height="48" Content="空间地图" FontSize="14"/>
+                <ListBoxItem Height="48" Content="清理建议" FontSize="14"/>
+                <ListBoxItem Height="48" Content="重复文件" FontSize="14"/>
+                <ListBoxItem Height="48" Content="注册表" FontSize="14"/>
+                <ListBoxItem Height="48" Content="快捷方式" FontSize="14"/>
+                <ListBoxItem Height="48" Content="设置" FontSize="14"/>
             </ListBox>
         </Border>
 
