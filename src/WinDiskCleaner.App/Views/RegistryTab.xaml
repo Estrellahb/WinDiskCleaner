@@ -1,0 +1,100 @@
+<UserControl x:Class="WinDiskCleaner.App.Views.RegistryTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="SoftwareRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsInvalid}" Value="True">
+                    <Setter Property="Foreground" Value="#B00020"/>
+                    <Setter Property="Background" Value="#FFF1F1"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsOrphan}" Value="True">
+                    <Setter Property="Foreground" Value="#B00020"/>
+                    <Setter Property="Background" Value="#FFF1F1"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="注册表" FontSize="22" FontWeight="Bold"/>
+            <TextBlock Text="扫描卸载项，标记残留/无效软件，支持导出 .reg 备份与确认后恢复。不会自动删除注册表项。" Foreground="#666" Margin="0,6,0,0"/>
+            <Grid Margin="0,12,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="SearchBox" Height="32" VerticalContentAlignment="Center" Margin="0,0,8,0" TextChanged="SearchBox_TextChanged" ToolTip="搜索名称、版本、发布者、安装路径"/>
+                <Button Grid.Column="1" x:Name="ScanSoftwareBtn" Content="扫描软件" Width="100" Height="32" Margin="0,0,8,0" Background="#0078D4" Foreground="White" Click="ScanSoftwareBtn_Click"/>
+                <Button Grid.Column="2" Content="按名称" Width="80" Height="32" Margin="0,0,8,0" Click="SortNameBtn_Click"/>
+                <Button Grid.Column="3" Content="按大小" Width="80" Height="32" Margin="0,0,8,0" Click="SortSizeBtn_Click"/>
+                <Button Grid.Column="4" Content="按发布者" Width="90" Height="32" Click="SortPublisherBtn_Click"/>
+            </Grid>
+        </StackPanel>
+
+        <DataGrid Grid.Row="1" x:Name="SoftwareGrid" ItemsSource="{Binding Software}" AutoGenerateColumns="False" IsReadOnly="True"
+                  RowStyle="{StaticResource SoftwareRowStyle}" SelectionMode="Single" Margin="0,0,0,12">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="名称" Binding="{Binding DisplayName}" Width="2*"/>
+                <DataGridTextColumn Header="版本" Binding="{Binding DisplayVersion}" Width="*"/>
+                <DataGridTextColumn Header="发布者" Binding="{Binding Publisher}" Width="*"/>
+                <DataGridTextColumn Header="安装路径" Binding="{Binding InstallLocation}" Width="2*"/>
+                <DataGridTextColumn Header="大小" Binding="{Binding EstimatedSizeText}" Width="90"/>
+                <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="90"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Header="备份" Margin="0,0,8,0">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <ComboBox x:Name="BranchCombo" ItemsSource="{Binding BackupBranches}" SelectedItem="{Binding SelectedBackupBranch}" Height="30" Margin="0,0,0,8"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="备份选中分支" Width="120" Height="30" Margin="0,0,8,0" Click="BackupBranchBtn_Click"/>
+                        <Button Content="删除备份" Width="90" Height="30" Click="DeleteBackupBtn_Click"/>
+                    </StackPanel>
+                    <ListBox Grid.Row="2" x:Name="BackupHistoryList" ItemsSource="{Binding BackupHistory}" DisplayMemberPath="FilePath"/>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Column="1" Header="恢复" Margin="8,0,0,0">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="选择 .reg 文件" Width="120" Height="30" Margin="0,0,8,0" Click="ChooseRegFileBtn_Click"/>
+                        <TextBlock x:Name="SelectedRegFileText" Text="未选择" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Button Grid.Row="1" Content="预览分支内容" Width="120" Height="30" HorizontalAlignment="Left" Margin="0,0,0,8" Click="PreviewRegFileBtn_Click"/>
+                    <TextBox Grid.Row="2" x:Name="PreviewBox" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                    <Button Grid.Row="3" Content="执行恢复" Width="100" Height="30" HorizontalAlignment="Right" Margin="0,8,0,0" Background="#D83B01" Foreground="White" Click="RestoreBtn_Click"/>
+                </Grid>
+            </GroupBox>
+        </Grid>
+
+        <ListBox Grid.Row="3" Height="80" Margin="0,12,0,0" ItemsSource="{Binding OperationLogs}"/>
+    </Grid>
+</UserControl>
