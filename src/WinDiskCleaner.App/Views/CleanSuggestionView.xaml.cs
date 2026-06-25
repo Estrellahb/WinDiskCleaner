@@ -17,7 +17,7 @@ namespace WinDiskCleaner.App.Views;
 public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
 {
     private const double MaxBarWidth = 220;
-    private const int TopDirectoryLimit = 12;
+    private const int TopDirectoryLimit = 8;
     private const int ChildDirectoryLimit = 8;
 
     private readonly IDiskScanner _scanner = new DiskScanner();
@@ -361,17 +361,26 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
 
         _currentReport.EstimatedSafeClean = Math.Max(0, _currentReport.EstimatedSafeClean - result.FreedBytes);
         _currentReport.LowRiskItems.RemoveAll(node => successPaths.Contains(NormalizePath(node.Path)));
-        RemoveSucceededNodes(_currentReport.TopDirectories, successPaths);
+        RemoveSucceededNodesAndRecalculate(_currentReport.TopDirectories, successPaths);
         RenderReport(_currentReport);
     }
 
-    private static void RemoveSucceededNodes(List<ScanNode> nodes, HashSet<string> successPaths)
+    private static long RemoveSucceededNodesAndRecalculate(List<ScanNode> nodes, HashSet<string> successPaths)
     {
         nodes.RemoveAll(node => successPaths.Contains(NormalizePath(node.Path)));
+        long total = 0;
         foreach (var node in nodes)
         {
-            RemoveSucceededNodes(node.Children, successPaths);
+            if (node.IsDirectory)
+            {
+                node.Size = RemoveSucceededNodesAndRecalculate(node.Children, successPaths);
+                node.FileCount = node.Children.Sum(child => child.IsDirectory ? child.FileCount : 1);
+            }
+
+            total += node.Size;
         }
+
+        return total;
     }
 
     private static string NormalizePath(string path)
