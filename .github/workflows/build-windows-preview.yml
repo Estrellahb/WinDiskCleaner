@@ -35,12 +35,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Restore dependencies
+      - name: Restore test dependencies
         timeout-minutes: 10
-        run: dotnet restore src/WinDiskCleaner.App/WinDiskCleaner.App.csproj -r win-x64 --verbosity normal
+        run: dotnet restore tests/WinDiskCleaner.Core.Tests/WinDiskCleaner.Core.Tests.csproj --verbosity normal
 
       - name: Run tests
         run: dotnet test tests/WinDiskCleaner.Core.Tests/WinDiskCleaner.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Restore publish dependencies
+        timeout-minutes: 10
+        run: dotnet restore src/WinDiskCleaner.App/WinDiskCleaner.App.csproj -r win-x64 --verbosity normal
 
       - name: Publish Windows x64 self-contained app
         timeout-minutes: 15
