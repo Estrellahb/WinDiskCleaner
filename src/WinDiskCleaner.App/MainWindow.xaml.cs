@@ -6,8 +6,7 @@ namespace WinDiskCleaner.App;
 
 public partial class MainWindow : Window
 {
-    private readonly SpaceMapView _spaceMap = new();
-    private readonly CleanSuggestionView _cleanSuggestion = new();
+    private readonly CleanSuggestionView _smartClean = new();
     private readonly DuplicateFilesView _duplicateFiles = new();
     private readonly RegistryTab _registry = new();
     private readonly ShortcutTab _shortcuts = new();
@@ -16,10 +15,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _spaceMap.OnScanCompleted += report =>
-        {
-            _cleanSuggestion.LoadReport(report);
-        };
         TabList.SelectedIndex = 0;
     }
 
@@ -27,12 +22,11 @@ public partial class MainWindow : Window
     {
         ContentArea.Content = TabList.SelectedIndex switch
         {
-            0 => _spaceMap,
-            1 => _cleanSuggestion,
-            2 => _duplicateFiles,
-            3 => _registry,
-            4 => _shortcuts,
-            5 => _settings,
+            0 => _smartClean,
+            1 => _duplicateFiles,
+            2 => _registry,
+            3 => _shortcuts,
+            4 => _settings,
             _ => new TextBlock
             {
                 Text = "Coming Soon",
