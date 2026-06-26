@@ -14,6 +14,11 @@ obj/
 *.log
 scan_report_*.json
 
+# Local documentation / planning
+/docs/
+/spec/
+/specs/
+
 # OS files
 .DS_Store
 Thumbs.db
