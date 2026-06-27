@@ -19,6 +19,7 @@ public class Mvp1ReportGeneratorTests
 
         Assert.Contains("\"scanTime\"", json);
         Assert.Contains("\"topDirectories\"", json);
+        Assert.DoesNotContain("\"rootNode\"", json);
         Assert.True(File.Exists(outputPath));
         using var document = JsonDocument.Parse(await File.ReadAllTextAsync(outputPath));
         Assert.Equal("C:", document.RootElement.GetProperty("drive").GetString());
@@ -64,6 +65,17 @@ public class Mvp1ReportGeneratorTests
             FreeSize = 4L * 1024 * 1024 * 1024,
             EstimatedSafeClean = 1024L * 1024 * 1024,
             EstimatedConfirmClean = 512L * 1024 * 1024,
+            RootNode = new ScanNode
+            {
+                Path = @"C:\",
+                Name = "C:",
+                Size = 1536L * 1024 * 1024,
+                IsDirectory = true,
+                Children = new List<ScanNode>
+                {
+                    new() { Path = @"C:\Temp", Name = "Temp", Size = 1024L * 1024 * 1024, RiskLevel = RiskLevel.Low, IsDirectory = true }
+                }
+            },
             TopDirectories = new List<ScanNode>
             {
                 new() { Path = @"C:\Temp", Name = "Temp", Size = 1024L * 1024 * 1024, RiskLevel = RiskLevel.Low, IsDirectory = true }

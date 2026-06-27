@@ -5,7 +5,6 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using WinDiskCleaner.Core.Interfaces;
@@ -16,15 +15,13 @@ namespace WinDiskCleaner.App.Views;
 
 public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
 {
-    private const double MaxBarWidth = 220;
-    private const int TopDirectoryLimit = 8;
-    private const int ChildDirectoryLimit = 8;
+    private const int DefaultTreeExpandDepth = 2;
 
     private readonly IDiskScanner _scanner = new DiskScanner();
     private CancellationTokenSource? _cts;
     private ScanReport? _currentReport;
 
-    public ObservableCollection<DirectoryBarItem> DirectoryBars { get; } = new();
+    public ObservableCollection<ScanTreeViewNode> DirectoryTree { get; } = new();
     public ObservableCollection<AiSuggestionCard> AiSuggestions { get; } = new();
 
     private string _totalSizeText = "0 B";
@@ -68,6 +65,31 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         get => _cleanResultText;
         set => SetProperty(ref _cleanResultText, value);
     }
+
+    private ScanTreeViewNode? _selectedTreeNode;
+    public ScanTreeViewNode? SelectedTreeNode
+    {
+        get => _selectedTreeNode;
+        set
+        {
+            if (SetProperty(ref _selectedTreeNode, value))
+            {
+                OnPropertyChanged(nameof(SelectedNodeName));
+                OnPropertyChanged(nameof(SelectedNodePath));
+                OnPropertyChanged(nameof(SelectedNodeSizeText));
+                OnPropertyChanged(nameof(SelectedNodeFileCountText));
+                OnPropertyChanged(nameof(SelectedNodeRiskText));
+                OnPropertyChanged(nameof(SelectedNodeKindText));
+            }
+        }
+    }
+
+    public string SelectedNodeName => SelectedTreeNode?.Name ?? "未选择目录";
+    public string SelectedNodePath => SelectedTreeNode?.Path ?? "从左侧目录树选择一个节点查看详情";
+    public string SelectedNodeSizeText => SelectedTreeNode?.SizeText ?? "-";
+    public string SelectedNodeFileCountText => SelectedTreeNode?.FileCount.ToString() ?? "-";
+    public string SelectedNodeRiskText => SelectedTreeNode?.RiskLevel.ToString() ?? "-";
+    public string SelectedNodeKindText => SelectedTreeNode?.KindLabel ?? "-";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -148,10 +170,16 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         FreeSizeText = ReportGenerator.FormatSize(report.FreeSize);
         UpdateSpaceStatus(report);
 
-        DirectoryBars.Clear();
-        foreach (var item in BuildDirectoryBars(report))
+        DirectoryTree.Clear();
+        if (report.RootNode is not null)
         {
-            DirectoryBars.Add(item);
+            var rootItem = ScanTreeViewNode.FromScanNode(report.RootNode, report.RootNode.Size, DefaultTreeExpandDepth);
+            DirectoryTree.Add(rootItem);
+            SelectedTreeNode = rootItem;
+        }
+        else
+        {
+            SelectedTreeNode = null;
         }
     }
 
@@ -173,44 +201,6 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
             SpaceStatusText = "空间正常";
             SpaceStatusBrush = (Brush)new BrushConverter().ConvertFrom("#DFF6DD")!;
         }
-    }
-
-    public static List<DirectoryBarItem> BuildDirectoryBars(ScanReport report)
-    {
-        var total = report.TopDirectories.Sum(node => node.Size);
-        if (total <= 0)
-        {
-            total = report.UsedSize > 0 ? report.UsedSize : 1;
-        }
-
-        var ordered = report.TopDirectories
-            .Where(node => node.Size > 0)
-            .OrderByDescending(node => node.Size)
-            .ToList();
-
-        var result = ordered
-            .Take(TopDirectoryLimit)
-            .Select(node => DirectoryBarItem.FromNode(node, total, MaxBarWidth, ChildDirectoryLimit))
-            .ToList();
-
-        var remaining = ordered.Skip(TopDirectoryLimit).ToList();
-        if (remaining.Count > 0)
-        {
-            var otherSize = remaining.Sum(node => node.Size);
-            result.Add(new DirectoryBarItem
-            {
-                Name = "其他",
-                Path = "其他小目录合计",
-                Size = otherSize,
-                Percent = Math.Round(otherSize * 100d / total, 2),
-                RiskLevel = RiskLevel.Unknown,
-                FileCount = remaining.Sum(node => node.FileCount),
-                BarWidth = Math.Max(2, MaxBarWidth * otherSize / total),
-                IsDirectory = true
-            });
-        }
-
-        return result;
     }
 
     private async Task AnalyzeCurrentReportAsync(bool confirmPrivacy)
@@ -336,12 +326,9 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         }
     }
 
-    private void DirectoryBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void DirectoryTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if ((sender as FrameworkElement)?.DataContext is DirectoryBarItem item && item.Children.Count > 0)
-        {
-            item.IsExpanded = !item.IsExpanded;
-        }
+        SelectedTreeNode = e.NewValue as ScanTreeViewNode;
     }
 
     private void RefreshAfterClean(CleanResult result)
@@ -361,6 +348,13 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
 
         _currentReport.EstimatedSafeClean = Math.Max(0, _currentReport.EstimatedSafeClean - result.FreedBytes);
         _currentReport.LowRiskItems.RemoveAll(node => successPaths.Contains(NormalizePath(node.Path)));
+        if (_currentReport.RootNode is not null)
+        {
+            RemoveSucceededNodesAndRecalculate(_currentReport.RootNode.Children, successPaths);
+            _currentReport.RootNode.Size = _currentReport.RootNode.Children.Sum(child => child.Size);
+            _currentReport.RootNode.FileCount = _currentReport.RootNode.Children.Sum(child => child.IsDirectory ? child.FileCount : 1);
+        }
+
         RemoveSucceededNodesAndRecalculate(_currentReport.TopDirectories, successPaths);
         RenderReport(_currentReport);
     }
@@ -395,96 +389,16 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         }
     }
 
-    private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
         {
-            return;
+            return false;
         }
 
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-}
-
-public class DirectoryBarItem : INotifyPropertyChanged
-{
-    private bool _isExpanded;
-
-    public string Name { get; set; } = string.Empty;
-    public string Path { get; set; } = string.Empty;
-    public long Size { get; set; }
-    public double Percent { get; set; }
-    public RiskLevel RiskLevel { get; set; }
-    public long FileCount { get; set; }
-    public bool IsDirectory { get; set; }
-    public double BarWidth { get; set; }
-    public List<DirectoryBarItem> Children { get; set; } = new();
-
-    public string SizeText => ReportGenerator.FormatSize(Size);
-    public string PercentText => $"{Percent:F1}%";
-    public string KindLabel => IsDirectory ? "目录" : "文件";
-    public string DisplayName => IsExpanded && Children.Count > 0 ? $"{Name}（收起）" : Children.Count > 0 ? $"{Name}（展开）" : Name;
-    public string TooltipText => $"{Path}\n文件数：{FileCount}\n大小：{SizeText}";
-    public Brush RiskBrush => RiskLevel switch
-    {
-        RiskLevel.Low => (Brush)new BrushConverter().ConvertFrom("#107C10")!,
-        RiskLevel.Medium => (Brush)new BrushConverter().ConvertFrom("#F9C74F")!,
-        RiskLevel.High => (Brush)new BrushConverter().ConvertFrom("#FF8C00")!,
-        RiskLevel.Forbidden => (Brush)new BrushConverter().ConvertFrom("#E81123")!,
-        _ => (Brush)new BrushConverter().ConvertFrom("#8A8A8A")!
-    };
-
-    public bool IsExpanded
-    {
-        get => _isExpanded;
-        set
-        {
-            if (_isExpanded == value)
-            {
-                return;
-            }
-
-            _isExpanded = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(VisibleChildren));
-            OnPropertyChanged(nameof(DisplayName));
-        }
-    }
-
-    public IEnumerable<DirectoryBarItem> VisibleChildren => IsExpanded ? Children : Enumerable.Empty<DirectoryBarItem>();
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public static DirectoryBarItem FromNode(ScanNode node, long totalSize, double maxBarWidth, int childLimit)
-    {
-        totalSize = totalSize <= 0 ? 1 : totalSize;
-        var item = new DirectoryBarItem
-        {
-            Name = string.IsNullOrWhiteSpace(node.Name) ? System.IO.Path.GetFileName(node.Path.TrimEnd('\\', '/')) : node.Name,
-            Path = node.Path,
-            Size = node.Size,
-            Percent = Math.Round(node.Size * 100d / totalSize, 2),
-            RiskLevel = node.RiskLevel,
-            FileCount = node.FileCount,
-            IsDirectory = node.IsDirectory,
-            BarWidth = Math.Max(2, maxBarWidth * node.Size / totalSize)
-        };
-
-        var childTotal = node.Children.Sum(child => child.Size);
-        if (childTotal <= 0)
-        {
-            childTotal = node.Size > 0 ? node.Size : 1;
-        }
-
-        item.Children = node.Children
-            .Where(child => child.Size > 0)
-            .OrderByDescending(child => child.Size)
-            .Take(childLimit)
-            .Select(child => FromNode(child, childTotal, maxBarWidth, 0))
-            .ToList();
-
-        return item;
+        OnPropertyChanged(propertyName);
+        return true;
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

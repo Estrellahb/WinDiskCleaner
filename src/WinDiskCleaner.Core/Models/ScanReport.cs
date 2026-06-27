@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace WinDiskCleaner.Core.Models;
 
 public class ScanReport
@@ -8,6 +10,8 @@ public class ScanReport
     public long TotalSize { get; set; }
     public long UsedSize { get; set; }
     public long FreeSize { get; set; }
+    [JsonIgnore]
+    public ScanNode? RootNode { get; set; }
     public List<ScanReportItem> Items { get; set; } = new();
     public List<ScanNode> TopDirectories { get; set; } = new();
     public List<ScanNode> TopFiles { get; set; } = new();
