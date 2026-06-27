@@ -36,6 +36,16 @@ public class Mvp2ServiceTests
         var service = new AIService(httpClient, "test-key", "https://api.example.com/v1", "gpt-test");
         var report = new ScanReport
         {
+            RootNode = new ScanNode
+            {
+                Path = "/",
+                Name = "/",
+                IsDirectory = true,
+                Children = new List<ScanNode>
+                {
+                    new() { Path = "/tmp/full-tree-only.tmp", Name = "full-tree-only.tmp", Size = 999, RiskLevel = RiskLevel.Low }
+                }
+            },
             Items = new List<ScanReportItem>
             {
                 new() { Path = "/tmp/a.tmp", SizeBytes = 123, Category = "Temp" }
@@ -53,8 +63,11 @@ public class Mvp2ServiceTests
         using var requestJson = JsonDocument.Parse(capturedRequestBody!);
         Assert.Equal("gpt-test", requestJson.RootElement.GetProperty("model").GetString());
         var messages = requestJson.RootElement.GetProperty("messages");
-        Assert.Contains("Windows 磁盘清理顾问", messages[1].GetProperty("content").GetString());
-        Assert.Contains("/tmp/a.tmp", messages[1].GetProperty("content").GetString());
+        var userPrompt = messages[1].GetProperty("content").GetString();
+        Assert.Contains("Windows 磁盘清理顾问", userPrompt);
+        Assert.Contains("/tmp/a.tmp", userPrompt);
+        Assert.DoesNotContain("rootNode", userPrompt);
+        Assert.DoesNotContain("full-tree-only.tmp", userPrompt);
 
         var item = Assert.Single(suggestion.Suggestions);
         Assert.Equal("/tmp/a.tmp", item.Path);
