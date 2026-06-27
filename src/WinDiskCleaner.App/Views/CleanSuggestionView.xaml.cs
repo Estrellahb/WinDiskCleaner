@@ -98,11 +98,12 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         InitializeComponent();
         DataContext = this;
         LoadDrives();
+        Unloaded += (_, _) => ClearCurrentReport();
     }
 
     public void LoadReport(ScanReport report)
     {
-        _currentReport = report;
+        SetCurrentReport(report);
         RenderReport(report);
     }
 
@@ -136,12 +137,15 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         AiStatusText.Text = "AI 建议：等待扫描完成";
         CleanResultText = string.Empty;
         AiSuggestions.Clear();
+        DirectoryTree.Clear();
+        SelectedTreeNode = null;
+        ClearCurrentReport();
 
         try
         {
             var progress = new Progress<ScanProgress>(p => ScanProgress.Value = p.Percent);
             var report = await _scanner.ScanDriveAsync(DriveCombo.SelectedItem.ToString()!, progress, _cts.Token);
-            _currentReport = report;
+            SetCurrentReport(report);
             RenderReport(report);
             ScanStatusText.Text = "扫描完成";
             await AnalyzeCurrentReportAsync(confirmPrivacy: true);
@@ -357,6 +361,24 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
 
         RemoveSucceededNodesAndRecalculate(_currentReport.TopDirectories, successPaths);
         RenderReport(_currentReport);
+    }
+
+    private void SetCurrentReport(ScanReport report)
+    {
+        if (!ReferenceEquals(_currentReport, report))
+        {
+            ClearCurrentReport();
+            _currentReport = report;
+        }
+    }
+
+    private void ClearCurrentReport()
+    {
+        DirectoryTree.Clear();
+        AiSuggestions.Clear();
+        SelectedTreeNode = null;
+        _currentReport?.Dispose();
+        _currentReport = null;
     }
 
     private static long RemoveSucceededNodesAndRecalculate(List<ScanNode> nodes, HashSet<string> successPaths)

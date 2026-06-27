@@ -6,6 +6,28 @@ namespace WinDiskCleaner.Core.Tests;
 public class TreeViewScanReportTests
 {
     [Fact]
+    public async Task DiskScanner_ScanDriveAsync_DoesNotKeepPreviousRootNodeAliveAfterNextScan()
+    {
+        var firstRoot = Path.Combine(Environment.CurrentDirectory, "WinDiskCleanerScanLifetimeTests", Guid.NewGuid().ToString("N"));
+        var secondRoot = Path.Combine(Environment.CurrentDirectory, "WinDiskCleanerScanLifetimeTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(firstRoot);
+        Directory.CreateDirectory(secondRoot);
+        await File.WriteAllTextAsync(Path.Combine(firstRoot, "first.tmp"), "first");
+        await File.WriteAllTextAsync(Path.Combine(secondRoot, "second.tmp"), "second");
+        var scanner = new DiskScanner();
+
+        var firstReport = await scanner.ScanDriveAsync(firstRoot);
+        var firstRootReference = new WeakReference(firstReport.RootNode!);
+
+        firstReport.Dispose();
+        firstReport = await scanner.ScanDriveAsync(secondRoot);
+        firstReport.Dispose();
+        await ForceCollectionAsync();
+
+        Assert.False(firstRootReference.IsAlive);
+    }
+
+    [Fact]
     public async Task DiskScanner_ScanDriveAsync_PreservesFullRootNodeWithGrandchildren()
     {
         var root = Path.Combine(Environment.CurrentDirectory, "WinDiskCleanerTreeTests", Guid.NewGuid().ToString("N"));
@@ -94,5 +116,16 @@ public class TreeViewScanReportTests
             IsDirectory = false,
             RiskLevel = RiskLevel.Low
         };
+    }
+
+    private static async Task ForceCollectionAsync()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            await Task.Yield();
+        }
     }
 }
