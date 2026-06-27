@@ -53,6 +53,7 @@ public class DiskScanner : IDiskScanner
             Percent = 100
         });
         ApplyRisk(root);
+        report.RootNode = root;
         report.TopDirectories = FlattenAndSort(root, true).Take(10).ToList();
         report.TopFiles = FlattenAndSort(root, false).Take(20).ToList();
         CategorizeByRisk(root, report);
