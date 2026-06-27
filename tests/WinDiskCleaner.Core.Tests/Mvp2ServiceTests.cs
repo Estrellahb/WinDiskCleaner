@@ -10,8 +10,17 @@ namespace WinDiskCleaner.Core.Tests;
 public class Mvp2ServiceTests
 {
     [Fact]
-    public async Task AIService_AnalyzeReportAsync_PostsPromptAndParsesSuggestionsPayload()
+    public async Task AIService_AnalyzeReportAsync_PostsSummaryPromptAndMapsGroupSuggestionsToLocalPaths()
     {
+        var localPath = @"C:\Users\Alice\AppData\Local\Temp\a.tmp";
+        var report = new ScanReport
+        {
+            LowRiskItems = new List<ScanNode>
+            {
+                new() { Path = localPath, Name = "a.tmp", Size = 123, IsDirectory = false, RiskLevel = RiskLevel.Low }
+            }
+        };
+        var groupId = Assert.Single(SmartCleanCandidateGrouper.Group(report)).GroupId;
         HttpRequestMessage? capturedRequest = null;
         string? capturedRequestBody = null;
         using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
@@ -20,12 +29,12 @@ public class Mvp2ServiceTests
             capturedRequestBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("""
+                Content = new StringContent($$"""
                 {
                   "choices": [
                     {
                       "message": {
-                        "content": "```json\n{\"suggestions\":[{\"path\":\"/tmp/a.tmp\",\"action\":\"delete\",\"reason\":\"临时文件\",\"estimatedSpace\":123,\"confidence\":0.91}]}\n```"
+                        "content": "```json\n{\"suggestions\":[{\"groupId\":\"{{groupId}}\",\"action\":\"delete\",\"risk\":\"low\",\"reason\":\"临时文件\",\"confidence\":0.91}]}\n```"
                       }
                     }
                   ]
@@ -34,13 +43,6 @@ public class Mvp2ServiceTests
             };
         }));
         var service = new AIService(httpClient, "test-key", "https://api.example.com/v1", "gpt-test");
-        var report = new ScanReport
-        {
-            Items = new List<ScanReportItem>
-            {
-                new() { Path = "/tmp/a.tmp", SizeBytes = 123, Category = "Temp" }
-            }
-        };
 
         var suggestion = await service.AnalyzeReportAsync(report);
 
@@ -53,11 +55,16 @@ public class Mvp2ServiceTests
         using var requestJson = JsonDocument.Parse(capturedRequestBody!);
         Assert.Equal("gpt-test", requestJson.RootElement.GetProperty("model").GetString());
         var messages = requestJson.RootElement.GetProperty("messages");
-        Assert.Contains("Windows 磁盘清理顾问", messages[1].GetProperty("content").GetString());
-        Assert.Contains("/tmp/a.tmp", messages[1].GetProperty("content").GetString());
+        var prompt = messages[1].GetProperty("content").GetString();
+        Assert.Contains("清理候选组", prompt);
+        Assert.Contains("groupId", prompt);
+        Assert.Contains("不要返回完整路径", prompt);
+        Assert.DoesNotContain(localPath, prompt);
+        Assert.Contains("%USERPROFILE%", prompt);
 
         var item = Assert.Single(suggestion.Suggestions);
-        Assert.Equal("/tmp/a.tmp", item.Path);
+        Assert.Equal(groupId, item.GroupId);
+        Assert.Equal(localPath, item.Path);
         Assert.Equal("delete", item.Action);
         Assert.Equal("临时文件", item.Reason);
         Assert.Equal(123, item.EstimatedSpace);

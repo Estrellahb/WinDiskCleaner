@@ -9,13 +9,6 @@ namespace WinDiskCleaner.Core.Services;
 
 public class AIService : IAIService
 {
-    private static readonly JsonSerializerOptions ReportJsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() }
-    };
-
     private static readonly JsonSerializerOptions ParseJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -49,10 +42,11 @@ public class AIService : IAIService
 
     public async Task<AISuggestion> AnalyzeReportAsync(ScanReport report)
     {
-        var jsonReport = JsonSerializer.Serialize(report, ReportJsonOptions);
-        var prompt = BuildPrompt(jsonReport);
+        var groups = SmartCleanCandidateGrouper.Group(report);
+        var prompt = SmartCleanAiPromptBuilder.Build(report, groups);
         var response = await CallAIAsync(prompt);
-        return ParseResponse(response);
+        var suggestion = ParseResponse(response);
+        return MapGroupSuggestionsToLocalItems(suggestion, groups);
     }
 
     public async Task<bool> TestConnectionAsync()
@@ -68,30 +62,6 @@ public class AIService : IAIService
         {
             return false;
         }
-    }
-
-    private string BuildPrompt(string jsonReport)
-    {
-        return $@"你是一个 Windows 磁盘清理顾问。以下是磁盘扫描报告的 JSON，请分析哪些文件/目录可以安全删除。
-分析规则：
-1. 低风险：临时文件、缓存、崩溃转储，建议删除
-2. 中风险：下载文件、桌面文件，需用户确认
-3. 高风险：程序目录，不建议手动删除
-4. 禁止删除：系统目录，绝对不能删
-请按以下 JSON 格式返回分析结果，不要加额外说明：
-{{
-""suggestions"": [
-{{
-""path"": ""完整路径"",
-""action"": ""delete/keep/manual"",
-""reason"": ""删除理由"",
-""estimatedSpace"": 字节数,
-""confidence"": 0.0-1.0
-}}
-]
-}}
-报告 JSON：
-{jsonReport}";
     }
 
     private async Task<string> CallAIAsync(string prompt)
@@ -160,6 +130,52 @@ public class AIService : IAIService
         {
             return CreateParseFailureSuggestion();
         }
+    }
+
+    public static AISuggestion MapGroupSuggestionsToLocalItems(AISuggestion suggestion, IReadOnlyList<SmartCleanCandidateGroup> groups)
+    {
+        if (suggestion.Suggestions.Count == 1
+            && string.Equals(suggestion.Suggestions[0].Path, "解析失败", StringComparison.Ordinal)
+            && string.Equals(suggestion.Suggestions[0].Action, "manual", StringComparison.OrdinalIgnoreCase))
+        {
+            return suggestion;
+        }
+
+        var groupMap = groups.ToDictionary(group => group.GroupId, StringComparer.OrdinalIgnoreCase);
+        var mapped = new AISuggestion
+        {
+            Summary = suggestion.Summary,
+            AnalyzedAt = suggestion.AnalyzedAt == default ? DateTime.Now : suggestion.AnalyzedAt
+        };
+
+        foreach (var aiItem in suggestion.Suggestions.Where(item => string.Equals(item.Action, "delete", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (string.IsNullOrWhiteSpace(aiItem.GroupId) || !groupMap.TryGetValue(aiItem.GroupId, out var group))
+            {
+                continue;
+            }
+
+            if (group.RiskLevel != RiskLevel.Low)
+            {
+                continue;
+            }
+
+            foreach (var node in group.Nodes.Where(node => !string.IsNullOrWhiteSpace(node.Path)))
+            {
+                mapped.Suggestions.Add(new AISuggestionItem
+                {
+                    GroupId = group.GroupId,
+                    Path = node.Path,
+                    Action = "delete",
+                    Reason = string.IsNullOrWhiteSpace(aiItem.Reason) ? $"AI 建议清理 {group.DisplayName}" : aiItem.Reason,
+                    EstimatedSpace = node.Size,
+                    Confidence = aiItem.Confidence,
+                    Risk = CleanRisk.Low
+                });
+            }
+        }
+
+        return mapped;
     }
 
     private static void NormalizeSuggestionItem(AISuggestionItem item)

@@ -232,7 +232,7 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         if (confirmPrivacy)
         {
             var privacyResult = MessageBox.Show(
-                $"AI 分析会把当前扫描报告发送到配置的 AI 服务：{SettingsView.BaseUrl}\n\n扫描报告包含本地路径、文件名、目录结构等信息。确认继续？",
+                $"AI 分析会把当前扫描结果的摘要发送到配置的 AI 服务：{SettingsView.BaseUrl}\n\n摘要会按清理项聚合，本地路径会脱敏，不会发送完整扫描 JSON 或完整文件清单。确认继续？",
                 "AI 分析隐私确认",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
@@ -423,7 +423,7 @@ public class DirectoryBarItem : INotifyPropertyChanged
 
     public string SizeText => ReportGenerator.FormatSize(Size);
     public string PercentText => $"{Percent:F1}%";
-    public string KindLabel => IsDirectory ? "目录" : "文件";
+    public string KindLabel => string.Empty;
     public string DisplayName => IsExpanded && Children.Count > 0 ? $"{Name}（收起）" : Children.Count > 0 ? $"{Name}（展开）" : Name;
     public string TooltipText => $"{Path}\n文件数：{FileCount}\n大小：{SizeText}";
     public Brush RiskBrush => RiskLevel switch

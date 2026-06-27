@@ -2,6 +2,7 @@ namespace WinDiskCleaner.Core.Models;
 
 public class AISuggestionItem
 {
+    public string GroupId { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public string Action { get; set; } = "manual";
     public string Reason { get; set; } = string.Empty;
