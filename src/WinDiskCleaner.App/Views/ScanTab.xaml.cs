@@ -32,7 +32,8 @@ public partial class ScanTab : UserControl
                 StatusTextBlock.Text = $"扫描中：{p.CurrentPath}";
             });
 
-            _lastScanReport = await scanner.ScanDriveAsync(DrivePathTextBox.Text, progress);
+            var options = new ScanOptions { SkippedDirectoryNames = SettingsView.SkippedDirectoryNames.ToList() };
+            _lastScanReport = await scanner.ScanDriveAsync(DrivePathTextBox.Text, options, progress);
             ScanSummaryTextBlock.Text = $"Top 目录 {_lastScanReport.TopDirectories.Count} 个，Top 文件 {_lastScanReport.TopFiles.Count} 个，低风险 {_lastScanReport.LowRiskItems.Count} 项，预计安全清理 {_lastScanReport.EstimatedSafeClean} 字节";
             StatusTextBlock.Text = "扫描完成";
         }

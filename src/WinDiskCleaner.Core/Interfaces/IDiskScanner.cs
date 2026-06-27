@@ -5,7 +5,9 @@ namespace WinDiskCleaner.Core.Interfaces;
 public interface IDiskScanner
 {
     Task<ScanReport> ScanDriveAsync(string drivePath, CancellationToken ct = default);
+    Task<ScanReport> ScanDriveAsync(string drivePath, ScanOptions options, CancellationToken ct = default);
     Task<ScanReport> ScanDriveAsync(string drivePath, IProgress<ScanProgress>? progress, CancellationToken ct = default);
+    Task<ScanReport> ScanDriveAsync(string drivePath, ScanOptions options, IProgress<ScanProgress>? progress, CancellationToken ct = default);
 }
 
 public class ScanProgress

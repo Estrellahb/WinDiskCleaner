@@ -9,7 +9,10 @@
             <TextBlock Text="API Key" FontSize="13" Margin="0,0,0,4"/>
             <PasswordBox x:Name="ApiKeyBox" Height="30" Margin="0,0,0,12"/>
             <TextBlock Text="模型名称" FontSize="13" Margin="0,0,0,4"/>
-            <TextBox x:Name="ModelBox" Text="gpt-4o" Height="30" Margin="0,0,0,20"/>
+            <TextBox x:Name="ModelBox" Text="gpt-4o" Height="30" Margin="0,0,0,12"/>
+            <TextBlock Text="扫描时跳过的目录名" FontSize="13" Margin="0,0,0,4"/>
+            <TextBlock Text="每行一个目录名；保存后下一次扫描生效。清空会恢复默认跳过列表。" Foreground="#666" FontSize="12" Margin="0,0,0,4" TextWrapping="Wrap"/>
+            <TextBox x:Name="SkippedDirectoriesBox" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="130" Margin="0,0,0,20"/>
             <StackPanel Orientation="Horizontal">
                 <Button Content="测试连接" Width="100" Height="32"
                         Background="#0078D4" Foreground="White" Click="TestBtn_Click"/>

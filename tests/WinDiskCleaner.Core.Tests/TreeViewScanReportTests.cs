@@ -28,6 +28,32 @@ public class TreeViewScanReportTests
     }
 
     [Fact]
+    public async Task DiskScanner_ScanDriveAsync_UsesCustomSkippedDirectoryNames()
+    {
+        var root = Path.Combine(Environment.CurrentDirectory, "WinDiskCleanerSkipOptionTests", Guid.NewGuid().ToString("N"));
+        var defaultSkipped = Path.Combine(root, "Windows");
+        var customSkipped = Path.Combine(root, "IgnoreMe");
+        Directory.CreateDirectory(defaultSkipped);
+        Directory.CreateDirectory(customSkipped);
+        await File.WriteAllTextAsync(Path.Combine(defaultSkipped, "included.tmp"), "included");
+        await File.WriteAllTextAsync(Path.Combine(customSkipped, "excluded.tmp"), "excluded");
+        var scanner = new DiskScanner();
+        var options = new ScanOptions
+        {
+            SkippedDirectoryNames = new List<string> { "IgnoreMe" }
+        };
+
+        var report = await scanner.ScanDriveAsync(root, options);
+
+        Assert.NotNull(report.RootNode);
+        var windowsNode = Assert.Single(report.RootNode.Children.Where(node => node.Name == "Windows"));
+        Assert.Contains(windowsNode.Children, node => node.Name == "included.tmp");
+        var ignoredNode = Assert.Single(report.RootNode.Children.Where(node => node.Name == "IgnoreMe"));
+        Assert.Empty(ignoredNode.Children);
+        Assert.Equal(0, ignoredNode.Size);
+    }
+
+    [Fact]
     public void TreeViewNode_FromScanNode_DefaultExpansionIsBoundedAndChildrenAreLazy()
     {
         var root = DirectoryNode("root", 100,

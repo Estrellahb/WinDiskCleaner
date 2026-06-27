@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using WinDiskCleaner.Core.Models;
 using WinDiskCleaner.Core.Services;
 
 namespace WinDiskCleaner.App.Views;
@@ -16,6 +17,7 @@ public partial class SettingsView : UserControl
     public static string BaseUrl { get; private set; } = "https://api.openai.com/v1";
     public static string ApiKey { get; private set; } = string.Empty;
     public static string ModelName { get; private set; } = "gpt-4o";
+    public static List<string> SkippedDirectoryNames { get; private set; } = ScanOptions.DefaultSkippedDirectoryNames.ToList();
 
     public SettingsView()
     {
@@ -35,6 +37,7 @@ public partial class SettingsView : UserControl
                     BaseUrl = string.IsNullOrWhiteSpace(config.BaseUrl) ? BaseUrl : config.BaseUrl;
                     ApiKey = config.ApiKey ?? string.Empty;
                     ModelName = string.IsNullOrWhiteSpace(config.Model) ? ModelName : config.Model;
+                    SkippedDirectoryNames = NormalizeSkippedDirectoryNames(config.SkippedDirectoryNames);
                 }
             }
             catch
@@ -46,6 +49,7 @@ public partial class SettingsView : UserControl
         BaseUrlBox.Text = BaseUrl;
         ApiKeyBox.Password = ApiKey;
         ModelBox.Text = ModelName;
+        SkippedDirectoriesBox.Text = string.Join(Environment.NewLine, SkippedDirectoryNames);
     }
 
     private async void TestBtn_Click(object sender, RoutedEventArgs e)
@@ -76,6 +80,8 @@ public partial class SettingsView : UserControl
         BaseUrl = string.IsNullOrWhiteSpace(BaseUrlBox.Text) ? "https://api.openai.com/v1" : BaseUrlBox.Text.Trim();
         ApiKey = ApiKeyBox.Password;
         ModelName = string.IsNullOrWhiteSpace(ModelBox.Text) ? "gpt-4o" : ModelBox.Text.Trim();
+        SkippedDirectoryNames = NormalizeSkippedDirectoryNames(SkippedDirectoriesBox.Text
+            .Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
     }
 
     private static void SaveSettingsFile()
@@ -85,7 +91,8 @@ public partial class SettingsView : UserControl
         {
             BaseUrl = BaseUrl,
             ApiKey = ApiKey,
-            Model = ModelName
+            Model = ModelName,
+            SkippedDirectoryNames = SkippedDirectoryNames
         };
         var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(SettingsPath, json);
@@ -96,5 +103,19 @@ public partial class SettingsView : UserControl
         public string BaseUrl { get; set; } = "https://api.openai.com/v1";
         public string ApiKey { get; set; } = string.Empty;
         public string Model { get; set; } = "gpt-4o";
+        public List<string> SkippedDirectoryNames { get; set; } = ScanOptions.DefaultSkippedDirectoryNames.ToList();
+    }
+
+    private static List<string> NormalizeSkippedDirectoryNames(IEnumerable<string>? names)
+    {
+        var normalized = names?
+            .Select(name => name.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return normalized is { Count: > 0 }
+            ? normalized
+            : ScanOptions.DefaultSkippedDirectoryNames.ToList();
     }
 }

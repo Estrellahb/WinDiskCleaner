@@ -5,16 +5,6 @@ namespace WinDiskCleaner.Core.Services;
 
 public class DiskScanner : IDiskScanner
 {
-    private static readonly string[] SkipDirs =
-    {
-        "System Volume Information",
-        "$Recycle.Bin",
-        "Windows",
-        "Program Files",
-        "Program Files (x86)",
-        "ProgramData"
-    };
-
     private readonly RiskClassifier _riskClassifier;
     private long _directoriesScanned;
     private long _filesScanned;
@@ -26,13 +16,24 @@ public class DiskScanner : IDiskScanner
 
     public Task<ScanReport> ScanDriveAsync(string drivePath, CancellationToken ct = default)
     {
-        return ScanDriveAsync(drivePath, null, ct);
+        return ScanDriveAsync(drivePath, ScanOptions.Default, null, ct);
+    }
+
+    public Task<ScanReport> ScanDriveAsync(string drivePath, ScanOptions options, CancellationToken ct = default)
+    {
+        return ScanDriveAsync(drivePath, options, null, ct);
     }
 
     public async Task<ScanReport> ScanDriveAsync(string drivePath, IProgress<ScanProgress>? progress, CancellationToken ct = default)
     {
+        return await ScanDriveAsync(drivePath, ScanOptions.Default, progress, ct);
+    }
+
+    public async Task<ScanReport> ScanDriveAsync(string drivePath, ScanOptions options, IProgress<ScanProgress>? progress, CancellationToken ct = default)
+    {
         _directoriesScanned = 0;
         _filesScanned = 0;
+        options ??= ScanOptions.Default;
         var rootDirectory = ResolveRootDirectory(drivePath);
         var drive = TryCreateDriveInfo(drivePath, rootDirectory);
         var report = new ScanReport
@@ -44,7 +45,7 @@ public class DiskScanner : IDiskScanner
             FreeSize = drive?.AvailableFreeSpace ?? 0
         };
 
-        var root = await ScanDirectoryAsync(rootDirectory, 0, progress, ct);
+        var root = await ScanDirectoryAsync(rootDirectory, 0, options, progress, ct);
         progress?.Report(new ScanProgress
         {
             CurrentPath = rootDirectory.FullName,
@@ -69,7 +70,7 @@ public class DiskScanner : IDiskScanner
         return report;
     }
 
-    private async Task<ScanNode> ScanDirectoryAsync(DirectoryInfo dir, int depth, IProgress<ScanProgress>? progress, CancellationToken ct)
+    private async Task<ScanNode> ScanDirectoryAsync(DirectoryInfo dir, int depth, ScanOptions options, IProgress<ScanProgress>? progress, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         var node = new ScanNode
@@ -81,7 +82,7 @@ public class DiskScanner : IDiskScanner
             RiskLevel = _riskClassifier.Classify(NormalizePathForClassification(dir.FullName), true)
         };
 
-        if (SkipDirs.Contains(dir.Name, StringComparer.OrdinalIgnoreCase) || depth > 8)
+        if (options.SkippedDirectoryNames.Contains(dir.Name, StringComparer.OrdinalIgnoreCase) || depth > 8)
         {
             return node;
         }
@@ -91,7 +92,7 @@ public class DiskScanner : IDiskScanner
             _directoriesScanned++;
             foreach (var subDir in dir.GetDirectories())
             {
-                var child = await ScanDirectoryAsync(subDir, depth + 1, progress, ct);
+                var child = await ScanDirectoryAsync(subDir, depth + 1, options, progress, ct);
                 node.Children.Add(child);
                 node.Size += child.Size;
                 node.FileCount += child.FileCount;

@@ -17,7 +17,7 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
 {
     private const int DefaultTreeExpandDepth = 2;
 
-    private readonly IDiskScanner _scanner = new DiskScanner();
+    private readonly DiskScanner _scanner = new();
     private CancellationTokenSource? _cts;
     private ScanReport? _currentReport;
 
@@ -140,7 +140,8 @@ public partial class CleanSuggestionView : UserControl, INotifyPropertyChanged
         try
         {
             var progress = new Progress<ScanProgress>(p => ScanProgress.Value = p.Percent);
-            var report = await _scanner.ScanDriveAsync(DriveCombo.SelectedItem.ToString()!, progress, _cts.Token);
+            var options = new ScanOptions { SkippedDirectoryNames = SettingsView.SkippedDirectoryNames.ToList() };
+            var report = await _scanner.ScanDriveAsync(DriveCombo.SelectedItem.ToString()!, options, progress, _cts.Token);
             _currentReport = report;
             RenderReport(report);
             ScanStatusText.Text = "扫描完成";
