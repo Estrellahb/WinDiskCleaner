@@ -65,7 +65,7 @@ public class Mvp2ServiceTests
         var messages = requestJson.RootElement.GetProperty("messages");
         var userPrompt = messages[1].GetProperty("content").GetString();
         Assert.Contains("Windows 磁盘清理顾问", userPrompt);
-        Assert.Contains("/tmp/a.tmp", userPrompt);
+        Assert.Contains("a.tmp", userPrompt);
         Assert.DoesNotContain("rootNode", userPrompt);
         Assert.DoesNotContain("full-tree-only.tmp", userPrompt);
 
@@ -78,6 +78,76 @@ public class Mvp2ServiceTests
         Assert.Equal(CleanRisk.Low, item.Risk);
         Assert.Equal(0.91, item.Confidence, 2);
         Assert.True(suggestion.AnalyzedAt > DateTime.MinValue);
+    }
+
+    [Fact]
+    public async Task AIService_AnalyzeReportAsync_SendsBoundedSummaryInsteadOfFullReportJson()
+    {
+        string? capturedRequestBody = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            capturedRequestBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "content": "{\"suggestions\":[]}"
+                      }
+                    }
+                  ]
+                }
+                """, Encoding.UTF8, "application/json")
+            };
+        }));
+        var service = new AIService(httpClient, "test-key", "https://api.example.com/v1", "gpt-test");
+        var report = new ScanReport
+        {
+            Drive = "C:",
+            TotalSize = 1_000_000_000,
+            UsedSize = 900_000_000,
+            FreeSize = 100_000_000,
+            EstimatedSafeClean = 500_000_000,
+            EstimatedConfirmClean = 250_000_000,
+            LowRiskItems = Enumerable.Range(1, 500)
+                .Select(index => new ScanNode
+                {
+                    Path = $@"C:\Users\Alice\AppData\Local\Temp\oversized-{index:0000}.tmp",
+                    Name = $"oversized-{index:0000}.tmp",
+                    Size = 1024L * index,
+                    IsDirectory = false,
+                    RiskLevel = RiskLevel.Low,
+                    LastModified = new DateTime(2026, 1, 1).AddDays(index % 30)
+                })
+                .ToList(),
+            MediumRiskItems = Enumerable.Range(1, 300)
+                .Select(index => new ScanNode
+                {
+                    Path = $@"C:\Users\Alice\Downloads\maybe-{index:0000}.zip",
+                    Name = $"maybe-{index:0000}.zip",
+                    Size = 2048L * index,
+                    IsDirectory = false,
+                    RiskLevel = RiskLevel.Medium,
+                    LastModified = new DateTime(2026, 2, 1).AddDays(index % 30)
+                })
+                .ToList()
+        };
+
+        await service.AnalyzeReportAsync(report);
+
+        Assert.NotNull(capturedRequestBody);
+        using var requestJson = JsonDocument.Parse(capturedRequestBody!);
+        var userPrompt = requestJson.RootElement.GetProperty("messages")[1].GetProperty("content").GetString();
+        Assert.NotNull(userPrompt);
+        Assert.True(userPrompt!.Length < 12000, $"Prompt length was {userPrompt.Length}");
+        Assert.Contains("候选清理项摘要", userPrompt);
+        Assert.Contains("未展开项", userPrompt);
+        Assert.DoesNotContain("报告 JSON", userPrompt);
+        Assert.DoesNotContain("\"lowRiskItems\"", userPrompt);
+        Assert.DoesNotContain("oversized-0001.tmp", userPrompt);
+        Assert.DoesNotContain("maybe-0001.zip", userPrompt);
     }
 
     [Fact]
